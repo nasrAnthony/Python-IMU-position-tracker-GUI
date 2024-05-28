@@ -1,12 +1,12 @@
 import tkinter as tk 
 import subprocess
+from json_decoder_v2 import *
+from IMU_motion_tracker import *
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 
 window = tk.Tk()
-#set window label
-main_window_label = tk.Label(text = "Motion tracker GUI",
-                            #background = "red", 
-                            #forground = "green"
-                             ).pack()
 
 class app():
     def __init__(self, window):
@@ -17,6 +17,17 @@ class app():
         self.analysis_button_cf = False
         self.port = ''
         self.window = window
+        self.index = 0
+        self.listen_button = tk.Button(self.window, text = "Listen on Port", command = self.listen_on_click, cursor="hand2")
+        self.viewports_button = tk.Button(self.window, text = "View available ports", command = self.viewports_on_click, cursor="hand2")
+        self.graph_button = tk.Button(self.window, text = "Graph results",   command = self.graph_on_click, cursor="hand2")
+        self.analysis_button = tk.Button(self.window, text = "Run analysis", command = self.analyze_on_click, cursor="hand2")
+        self.next_graph_button = tk.Button(self.window, text = "Next Graph", command = self.go_next_graph, cursor="hand2")
+        self.main_window_label = tk.Label(text = "Motion tracker GUI").pack()
+        self.port_input_label = tk.Label(text = "Selected Port")      
+        self.port_input_box = tk.Text(self.window, height = 1, width = 16) 
+        self.free_ports = []   
+        self.graphs = []
 
     def get_port(self) -> str:
         return self.port
@@ -37,66 +48,75 @@ class app():
     def reset_state(self) -> None:
         self.current_state = self.states[0]
 
-    #def set_on_click(self, action):
-    #    if(action == "listen"):
-    #        self.listen_button_cf = True
-    #        self.graph_button_cf, self.analysis_button_cf = False, False
-    #        self.update_state(state_index = 1)
-    #    elif(action == "graph"):
-    #        self.graph_button_cf = True
-    #        self.listen_button_cf, self.analysis_button_cf = False, False
-    #        self.update_state(state_index = 3)
-    #    elif(action == "analyze"):
-    #        self.analysis_button_cf = True
-    #        self.graph_button_cf, self.listen_button_cf = False, False
-    #        self.update_state(state_index = 2)
-    #    self.what_state()
+    def build_app(self):
+        self.window.geometry("800x600")
+        self.window.resizable(0,0)
+        self.listen_button.place(x= 325,y= 23)
+        self.graph_button.place(x= 415,y= 23)
+        self.analysis_button.place(x= 500,y= 23)
+        self.viewports_button.place(x= 205,y= 23)
+        self.port_input_label.place(x= 5, y=5)
+        self.port_input_box.place(x= 5, y=23)   
+        self.next_graph_button.place(x= 400, y = 550)
 
-    def listen_on_click(self):
-        self.update_state(state_index = 1)
+    def is_port_valid(self, input) -> bool:
+        #true if port is valid
+        #false if port is invalid
+        port_name = str(input).strip()
+        return port_name in self.free_ports
+    
+    def listen_on_click(self) -> None:
+        if(self.is_port_valid(self.port_input_box.get(1.0,tk.END))):
+            local_address = self.port_input_box.get(1.0,tk.END).split(":")[0]
+            port_num = self.port_input_box.get(1.0,tk.END).split(":")[1]
+            listen_json(IP = local_address, port_number = int(port_num))
+            self.update_state(state_index = 1)
+        else:
+            print(f"Port {self.port_input_box.get(1.0,tk.END)} is invalid.")
+
     def analyze_on_click(self):
+        self.graphs = graph_data() #call to IMU_motion_tracker logic
         self.update_state(state_index = 2)
+
     def graph_on_click(self):
         self.update_state(state_index = 3)
+        fig = Figure(figsize=(5, 4), dpi=100)
+        plot = self.graphs[0]
+        canvas = FigureCanvasTkAgg(fig, master=self.window)  # A tk.DrawingArea.
+        canvas.draw()
+        canvas.get_tk_widget().place(x=205,y=70)
+
+    def go_next_graph(self):
+        if(self.index+1 > len(self.graphs)):
+            next_index = 0
+        else:
+            next_index = self.index + 1
+            self.index += 1
+        fig = Figure(figsize=(5, 4), dpi=100)
+        plot = self.graphs[next_index]
+        canvas = FigureCanvasTkAgg(fig, master=self.window)  # A tk.DrawingArea.
+        canvas.draw()
+        canvas.get_tk_widget().place(x=205,y=70)
     
-    def get_ports(self):
-        raw_cmd = subprocess.check_output("netstat -a -n -p tcp -o", shell=True)
+    def get_ports(self) -> list:
+        raw_cmd = subprocess.check_output("netstat -a -n -p tcp -o", shell = True)
         raw_cmd = raw_cmd.decode("utf-8")
-        
-        all_ports = ""
-        return all_ports
+        available_ports = raw_cmd.split('\n')[4:]
+        list_ports = [line.split()[1] for line in available_ports if line != "" and line.split()[3] == "LISTENING"]
+        self.free_ports = list_ports
+        return list_ports
 
-    def viewports_on_click(self):
-        output = subprocess.check_output("netstat -a -n -p tcp -o", shell=True)
-        output = output.decode("utf-8")
-        #print(output.split('\n'))
+    def viewports_on_click(self) -> None:
         textBox = tk.Text(self.window, height = 50, width = 16)
-        textBox.place(x= 5, y=90)
-        #smth = "10.0.0.20:64297\n10.0.0.20:64298\n10.0.0.20:64299"
+        textBox.place(x= 5, y=60)
         output = self.get_ports()
-        textBox.insert("end-1c", output)
-        #textBox.insert("end-1c", smth)
-
+        for port in output:
+            textBox.insert("end-1c", port+"\n")
 
     def what_state(self) -> None:
         print(self.current_state)
 
 #instance of application. 
 application = app(window)
-
-#make window fixed size
-window.geometry("800x600")
-window.resizable(0,0)
-
-#creating the buttons
-listen_button = tk.Button(window, text = "Listen on Port", command = application.listen_on_click, cursor="hand2")
-viewports_button = tk.Button(window, text = "View available ports", command = application.viewports_on_click, cursor="hand2")
-graph_button = tk.Button(window, text = "Graph results",   command = application.graph_on_click, cursor="hand2")
-analysis_button = tk.Button(window, text = "Run analysis", command = application.analyze_on_click, cursor="hand2")
-
-listen_button.place(x= 125,y= 50)
-graph_button.place(x= 215,y= 50)
-analysis_button.place(x= 300,y= 50)
-viewports_button.place(x= 5,y= 50)
-
+application.build_app()
 window.mainloop()
