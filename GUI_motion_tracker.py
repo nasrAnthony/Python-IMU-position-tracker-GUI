@@ -28,6 +28,12 @@ class app():
         self.port_input_box = tk.Text(self.window, height = 1, width = 16) 
         self.free_ports = []   
         self.graphs = []
+        self.current_canvas = None
+        self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+    def on_closing(self):
+        self.window.destroy()
+        self.window.quit()
 
     def get_port(self) -> str:
         return self.port
@@ -49,7 +55,7 @@ class app():
         self.current_state = self.states[0]
 
     def build_app(self):
-        self.window.geometry("800x600")
+        self.window.geometry("1200x600")
         self.window.resizable(0,0)
         self.listen_button.place(x= 325,y= 23)
         self.graph_button.place(x= 415,y= 23)
@@ -80,23 +86,27 @@ class app():
 
     def graph_on_click(self):
         self.update_state(state_index = 3)
-        fig = Figure(figsize=(5, 4), dpi=100)
-        plot = self.graphs[0]
+        fig = self.graphs[0]
         canvas = FigureCanvasTkAgg(fig, master=self.window)  # A tk.DrawingArea.
         canvas.draw()
         canvas.get_tk_widget().place(x=205,y=70)
+        self.current_canvas = canvas  # Save the current canvas to be able to destroy it later
 
     def go_next_graph(self):
         if(self.index+1 > len(self.graphs)):
             next_index = 0
+            self.index = 0 
         else:
             next_index = self.index + 1
             self.index += 1
-        fig = Figure(figsize=(5, 4), dpi=100)
-        plot = self.graphs[next_index]
+
+        if hasattr(self, 'current_canvas'):
+            self.current_canvas.get_tk_widget().destroy()  # Remove the current canvas widget
+        fig = self.graphs[next_index]
         canvas = FigureCanvasTkAgg(fig, master=self.window)  # A tk.DrawingArea.
         canvas.draw()
-        canvas.get_tk_widget().place(x=205,y=70)
+        canvas.get_tk_widget().place(x=170, y=70)
+        self.current_canvas = canvas  # Save the new canvas to be able to destroy it later
     
     def get_ports(self) -> list:
         raw_cmd = subprocess.check_output("netstat -a -n -p tcp -o", shell = True)

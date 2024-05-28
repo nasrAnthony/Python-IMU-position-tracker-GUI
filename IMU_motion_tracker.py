@@ -420,119 +420,77 @@ This section of the code purely deals with the graphing of the probabilistic dat
 '''
 def graph_data():
     out = []
-    #create data_container instance
     data_arbiter = data_container()
-    #create kalman filter instance:
     KF = kalman_filter(data_arbiter.get_acc_data())
-    #run the Kalman filter. 
     estimated_positions = KF.run_filter()
 
     test_user = user(estimated_positions)
     print("Max height detected: "+ str(test_user.get_max_height()))
-    #dump data into log
-    file_out.write("--------Full position data log-----------\n")
-    for tuple in estimated_positions:
-        #print(tuple)
-        file_out.write(str(tuple)+'\n')
-        #flip z in correct orientation. 
 
-        test_user.update_current_position((tuple[0], tuple[1], -1*tuple[2]))
-
-    #dump each rep travel path into log
-    file_out.write("--------Specific Rep travel data-----------\n")
-    for rep in test_user.get_arbitter().get_rep_list():
-        for data in rep.get_travel_data():
-            file_out.write(f"Rep #{rep.get_rep_num()}: {str(data)}\n")
-        print(f"Rep #: {str(rep.get_rep_num())} was completed with {rep.get_form_flag()} form." )    
-
-    # Unpack the positions into separate lists
-    #x_coords, y_coords, z_coords = zip(*estimated_positions)
-    x_coords, y_coords, z_coords = zip(*[(x, y, -z) for x, y, z in estimated_positions]) # z is multplied by -1 because directions are inverted. 
-    
-    # Unpack the accelerometer data into separate lists for x, y, and z
+    x_coords, y_coords, z_coords = zip(*[(x, y, -z) for x, y, z in estimated_positions])
     x_acc, y_acc, z_acc = zip(*data_arbiter.get_acc_data())
     
-    t = np.arange(len(x_acc)) * KF.get_dt()  #time axis for acceleration plots. 
-    # Create a new figure for 3D plotting
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    #Plot the points
-    ax.scatter(x_coords, y_coords, z_coords, c='r', marker='o')
-    
-    #Plot the lines connecting points
-    ax.plot(x_coords, y_coords, z_coords, label='Estimated travel path')
-    
-    #Labels and title
-    ax.set_xlabel('X Position')
-    ax.set_ylabel('Y Position')
-    ax.set_zlabel('Z Position')
-    ax.set_title('Estimated Position Over Time')
-    
-    #Show the first point in orange
-    ax.scatter(x_coords[0], y_coords[0], z_coords[0], c='orange', marker='o', s=100, label='Start')
-    
-    #Show the last point in green
-    ax.scatter(x_coords[-1], y_coords[-1], z_coords[-1], c='green', marker='o', s=100, label='End')
-    
-    #Showcase legend
-    ax.legend()
-    out.append(ax)
-    plt.show()
-    
-    #Plot Z position over time. 
-    plt.figure(figsize=(10, 3))
+    t = np.arange(len(x_acc)) * KF.get_dt()
+
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111, projection='3d')
+    ax1.scatter(x_coords, y_coords, z_coords, c='r', marker='o')
+    ax1.plot(x_coords, y_coords, z_coords, label='Estimated travel path')
+    ax1.set_xlabel('X Position')
+    ax1.set_ylabel('Y Position')
+    ax1.set_zlabel('Z Position')
+    ax1.set_title('Estimated Position Over Time')
+    ax1.scatter(x_coords[0], y_coords[0], z_coords[0], c='orange', marker='o', s=100, label='Start')
+    ax1.scatter(x_coords[-1], y_coords[-1], z_coords[-1], c='green', marker='o', s=100, label='End')
+    ax1.legend()
+    out.append(fig1)
+
+    fig2 = plt.figure(figsize=(10, 3))
     plt.plot(t, z_coords, label='Z position over time', color='purple')
-    # Scatter plot to show each point
-    plt.scatter(t, z_coords, color='orange')  # Choose a color that stands out
+    plt.scatter(t, z_coords, color='orange')
     plt.title('Z position over time')
     plt.xlabel('Time (seconds)')
     plt.ylabel('m')
     plt.legend()
     plt.grid(True)
-    plt.show()
-    out.append(plt)
-    #Acceleration in X
-    plt.figure(figsize=(10, 3))
+    out.append(fig2)
+
+    fig3 = plt.figure(figsize=(10, 3))
     plt.plot(t, x_acc, label='X-Axis Acceleration', color='red')
     plt.title('Acceleration in X')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Acceleration (m/s^2)')
     plt.legend()
     plt.grid(True)
-    plt.show()
-    out.append(plt)
-    #Acceleration in Y
-    plt.figure(figsize=(10, 3))
+    out.append(fig3)
+
+    fig4 = plt.figure(figsize=(10, 3))
     plt.plot(t, y_acc, label='Y-Axis Acceleration', color='green')
     plt.title('Acceleration in Y')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Acceleration (m/s^2)')
     plt.legend()
     plt.grid(True)
-    plt.show()
-    out.append(plt)
-    
-    #Acceleration in Z
-    plt.figure(figsize=(10, 3))
+    out.append(fig4)
+
+    fig5 = plt.figure(figsize=(10, 3))
     plt.plot(t, data_arbiter.get_acc_z_pre_fitler(), label='Z-Axis Acceleration', color='blue')
     plt.title('Acceleration in Z pre-jerk removal')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Acceleration (m/s^2)')
     plt.legend()
     plt.grid(True)
-    plt.show()
-    out.append(plt)
-    #acceleration in Z post fitler
-    plt.figure(figsize=(10, 3))
+    out.append(fig5)
+
+    fig6 = plt.figure(figsize=(10, 3))
     plt.plot(t, data_arbiter.get_acc_z_post_fitler(), label='Z-Axis Acceleration', color='green')
     plt.title('Z-Axis Acceleration after removing Jerk')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Acceleration (m/s^2)')
     plt.legend()
     plt.grid(True)
-    plt.show()
-    out.append(plt)
+    out.append(fig6)
+
     return out
     #--------------------------------------------------End of Graphing-------------------------------------------------
 
